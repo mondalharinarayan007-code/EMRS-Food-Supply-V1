@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Food Supply</title>
+  <meta name="description" content="Food Supply Management">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script>
+    tailwind.config = { darkMode: "class", theme: { extend: {} } };
+  </script>
+  <link rel="manifest" href="manifest.json">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  
+  
+  
+<link rel="stylesheet" href="style.css">
+  <link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#0f172a">
+</head>
+<body id="appBody" class="theme-emerald-fixed text-slate-100 min-h-screen flex flex-col font-sans transition-colors duration-300">
+
+  <!-- RATE CHART MODAL -->
+  <div id="rateChartModal" class="fixed inset-0 z-[160] hidden items-center justify-center bg-black/80 backdrop-blur-md p-4">
+    <div class="glass w-full max-w-5xl rounded-[30px] p-5 border border-white/15 shadow-2xl max-h-[88vh] overflow-hidden">
+      <div class="flex justify-between items-center mb-4">
+        <div>
+          <p class="text-[10px] uppercase tracking-widest font-black opacity-60">Master Rate Chart</p>
+          <h3 class="text-xl font-black">Food Item Rates</h3>
+        </div>
+        <button onclick="closeRateChart()" class="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 font-bold">✕</button>
+      </div>
+      <div class="overflow-auto max-h-[68vh] rounded-2xl border border-white/10">
+        <table class="w-full text-left text-sm">
+          <thead class="sticky top-0 bg-slate-950/95 backdrop-blur z-10">
+            <tr class="border-b border-white/10">
+              <th class="px-3 py-3">#</th><th class="px-3 py-3">Item</th><th class="px-3 py-3">Unit</th><th class="px-3 py-3">Rate</th><th class="px-3 py-3">Category</th>
+            </tr>
+          </thead>
+          <tbody id="rateChartBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAILY COST DETAILS MODAL -->
+  <div id="costDetailsModal" class="fixed inset-0 z-[150] hidden items-center justify-center bg-black/75 backdrop-blur-md p-4">
+    <div class="glass w-full max-w-2xl rounded-[30px] p-6 border border-white/15 shadow-2xl max-h-[85vh] overflow-y-auto">
+      <div class="flex justify-between items-center mb-4 gap-3">
+        <div>
+          <p class="text-[10px] uppercase tracking-widest font-black opacity-60"><button id="rateChartHeaderBtn" onclick="openRateChart()" class="px-3 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 text-white font-bold shadow-lg hover:scale-105 transition">📋 Rate Chart</button> Daily Received Item Details</p>
+          <h3 id="costDetailsTitle" class="text-xl font-black">Selected Day</h3>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="downloadDailyDetailsPdf()" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-lg">📄 PDF</button>
+          <button onclick="closeCostDetails()" class="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 font-bold">✕</button>
+        </div>
+      </div>
+      <div id="costDetailsBody"></div>
+    </div>
+  </div>
+
+  <!-- NOTIFICATION MODAL -->
+  <div id="notificationModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm hidden p-4">
+    <div class="glass p-6 rounded-3xl max-w-sm w-full text-center space-y-4 border border-emerald-500/30 shadow-2xl">
+      <div id="notificationIcon" class="text-3xl">✨</div>
+      <h3 id="notificationTitle" class="text-lg font-bold text-emerald-400">Notice</h3>
+      <p id="notificationMessage" class="text-xs text-slate-300"></p>
+      <button onclick="closeNotification()" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg transition-all">OK</button>
+    </div>
+  </div>
+
+  <!-- EDIT MASTER ITEM MODAL -->
+  <div id="editMasterModal" class="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 backdrop-blur-md hidden p-4">
+    <div class="glass p-6 md:p-8 rounded-3xl max-w-md w-full space-y-5 border border-emerald-500/50 shadow-2xl relative bg-slate-900">
+      <div class="flex justify-between items-center border-b border-white/10 pb-3">
+        <h3 class="text-lg font-black text-emerald-400">✏️ Edit Master Item</h3>
+        <button onclick="closeEditMasterModal()" class="text-slate-400 hover:text-white font-bold text-lg p-1">✕</button>
+      </div>
+      <input type="hidden" id="editMasterIndex">
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs mb-1 opacity-80 font-semibold">Serial No (SL)</label>
+          <input type="number" min="0" step="1" id="editMasterId" class="input-custom w-full p-3 rounded-xl text-sm font-bold">
+        </div>
+        <div>
+          <label class="block text-xs mb-1 opacity-80 font-semibold">Item Name</label>
+          <input type="text" id="editMasterName" class="input-custom w-full p-3 rounded-xl text-sm font-medium">
+        </div>
+        <div>
+          <label class="block text-xs mb-1 opacity-80 font-semibold">Unit</label>
+          <input type="text" id="editMasterUnit" class="input-custom w-full p-3 rounded-xl text-sm">
+        </div>
+        <div>
+          <label class="block text-xs mb-1 opacity-80 font-semibold">Rate (₹)</label>
+          <input type="number" step="any" min="0" id="editMasterRate" class="input-custom w-full p-3 rounded-xl text-sm font-bold">
+        </div>
+      </div>
+      <div class="flex gap-3 pt-2">
+        <button onclick="closeEditMasterModal()" class="w-1/2 bg-white/10 hover:bg-white/20 py-3 rounded-xl text-xs font-bold transition-all">Cancel</button>
+        <button onclick="updateMasterItemFromModal()" class="w-1/2 bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl text-xs font-bold transition-all shadow-lg">Update Item</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LANDING SCREEN: approved full-bleed EMRS tribal artwork with functional hotspots -->
+  <div id="welcomeScreen" class="fixed inset-0 z-40 premium-bg emrs-art-landing" role="navigation" aria-label="Mess Management landing page">
+    <div class="welcome-content emrs-hotspot-layer">
+      <button type="button" class="emrs-hotspot emrs-boys-hotspot" onclick="selectSection('boys')" aria-label="Open Boys Portal"><span class="sr-only">Boys Portal</span></button>
+      <button type="button" class="emrs-hotspot emrs-girls-hotspot" onclick="selectSection('girls')" aria-label="Open Girls Portal"><span class="sr-only">Girls Portal</span></button>
+      <button type="button" class="emrs-hotspot emrs-combined-hotspot" onclick="selectSection('combined')" aria-label="Open Combined Portal"><span class="sr-only">Combined Portal</span></button>
+      <button type="button" class="emrs-hotspot emrs-settings-hotspot" onclick="openLandingSettings()" aria-label="Open Master Settings"><span class="sr-only">Master Settings</span></button>
+    </div>
+  </div>
+
+  <!-- MAIN APP CONTAINER -->
+  <div id="mainAppContainer" class="hidden flex-1 flex flex-col relative min-h-screen">
+    <!-- HEADER -->
+    <header class="glass border-b border-white/10 px-4 md:px-8 py-3.5 flex flex-col md:flex-row justify-between items-center gap-4 sticky top-0 z-30">
+      <div class="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start">
+        <button onclick="returnToWelcome()" class="text-xs font-bold px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all">← Landing</button>
+        <div class="flex items-center gap-3">
+          <span id="sidebarBadge" class="text-xs font-extrabold uppercase px-3 py-1 rounded-lg border">Portal</span>
+          <h2 id="sidebarTitle" class="text-lg md:text-xl font-black">Food Supply</h2>
+        </div>
+      </div>
+      <div class="flex items-center gap-3 w-full md:w-auto justify-end flex-wrap">
+        
+        <!-- YEAR & MONTH SELECTOR -->
+        <div class="flex items-center gap-2 bg-emerald-950/80 px-3 py-1.5 rounded-xl border border-emerald-500/40 shadow-md">
+          <span class="text-xs text-emerald-300 font-bold">📅 Year:</span>
+          <select id="activeYearSelect" onchange="onYearChange()" class="bg-emerald-900 text-xs font-extrabold text-white px-2 py-1 rounded-lg border border-emerald-500/30 focus:outline-none cursor-pointer">
+          </select>
+          <span class="text-xs text-emerald-300 font-bold ml-1">Month:</span>
+          <select id="activeMonthSelect" onchange="onMonthChange()" class="bg-emerald-900 text-xs font-extrabold text-white px-2 py-1 rounded-lg border border-emerald-500/30 focus:outline-none cursor-pointer">
+          </select>
+        </div>
+
+        <div id="topNavTabsContainer" class="flex items-center gap-2">
+          <button onclick="switchTab('daily')" id="tabDaily" class="px-4 py-2 rounded-xl font-bold text-xs shadow-md transition-all">📅 Daily Supply</button>
+          <button onclick="switchTab('summary')" id="tabSummary" class="px-4 py-2 rounded-xl font-bold text-xs hover:bg-white/5 opacity-80 transition-all">📈 Monthly Summary</button>
+        </div>
+        <button onclick="exportToExcel()" id="sidebarExcelBtn" class="py-2 px-4 rounded-xl font-bold text-xs text-white shadow transition-all bg-emerald-600 hover:bg-emerald-500">📊 Excel Report</button>
+      </div>
+    </header>
+
+    <!-- CONTENT -->
+    <main id="portalScrollMain" class="flex-1 p-4 md:p-8 overflow-y-auto space-y-6 max-w-7xl mx-auto w-full">
+
+      <!-- DAILY SECTION -->
+      <div id="sectionDaily" class="space-y-6">
+        
+        <!-- ACTIVE MONTH & YEAR INDICATOR BANNER -->
+        <div class="glass px-6 py-3 rounded-2xl flex items-center justify-between border border-emerald-500/30 bg-emerald-950/40">
+          <div class="flex items-center gap-2">
+            <span class="text-emerald-400 text-lg">📌</span>
+            <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">Current Working Period:</span>
+          </div>
+          <div id="activePeriodIndicator" class="text-sm font-black text-emerald-300 bg-emerald-500/20 px-4 py-1 rounded-xl border border-emerald-500/30">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="glass p-5 rounded-3xl">
+            <p id="dashDayDateLabel" class="text-xs font-semibold opacity-70 uppercase">Selected Day</p>
+            <h3 id="dashDayItemCount" class="text-2xl font-black mt-1">0 Items</h3>
+            <p id="dashDayDateSub" class="text-[11px] mt-1 opacity-60">—</p>
+          </div>
+          <div onclick="openCostDetails()" class="glass p-5 rounded-3xl cost-clickable" title="Click to view item details for this day">
+            <p id="dashCostDateLabel" class="text-xs font-semibold opacity-70 uppercase">Selected Day Cost</p>
+            <h3 id="dashDayCost" class="text-2xl font-black mt-1">₹ 0</h3>
+            <p class="text-[11px] mt-1 text-emerald-300 font-bold">Click for item details →</p>
+          </div>
+          <div class="glass p-5 rounded-3xl">
+            <p class="text-xs font-semibold opacity-70 uppercase">Total Monthly Expense</p>
+            <h3 id="dashTotalCost" class="text-2xl font-black mt-1">₹ 0</h3>
+            <p id="dashSpentPercentage" class="text-[11px] font-bold mt-1 text-emerald-300">Spent: 0%</p>
+          </div>
+          <div class="glass p-5 rounded-3xl">
+            <p class="text-xs font-semibold opacity-70 uppercase">Remaining Budget</p>
+            <h3 id="dashRemainingBudget" class="text-2xl font-black mt-1">₹ 0</h3>
+            <p id="dashRemainingPercentage" class="text-[11px] font-bold mt-1 text-emerald-300">Remaining: 100%</p>
+          </div>
+        </div>
+
+        <div class="glass p-6 rounded-3xl space-y-5">
+          <div class="flex flex-col gap-3 bg-white/5 p-4 rounded-2xl">
+            <div class="flex justify-between items-center">
+              <h3 id="activeHostelTitle" class="font-extrabold text-base">Hostel</h3>
+              <span id="dayItemCountBadge" class="text-xs font-bold px-3 py-1 rounded-full border">Day 1 Selected</span>
+            </div>
+            <div id="dayRibbonContainer" class="flex gap-2 overflow-x-auto py-2 scrollbar-thin"></div>
+          </div>
+
+          <!-- DATA ENTRY MODES -->
+          <div class="entry-mode-shell p-3 rounded-2xl bg-white/5 border border-white/10">
+            <div class="flex flex-wrap gap-2 items-center justify-between">
+              <div class="text-[11px] font-black uppercase tracking-wider opacity-70">Data Entry Mode</div>
+              <div id="entryModeButtons" class="flex flex-wrap gap-2">
+                <button type="button" data-entry-mode="quick" onclick="setEntryMode('quick')" class="entry-mode-btn active">⚡ Quick</button>
+                <button type="button" data-entry-mode="repeat" onclick="setEntryMode('repeat')" class="entry-mode-btn">↻ Repeat / Copy</button>
+                <button type="button" data-entry-mode="import" onclick="setEntryMode('import')" class="entry-mode-btn">⇧ Import</button>
+                <button type="button" data-entry-mode="grid" onclick="setEntryMode('grid')" class="entry-mode-btn">▦ Grid</button>
+              </div>
+            </div>
+            <div id="entryModePanel" class="mt-3"></div>
+          </div>
+
+          <!-- INPUT FORM -->
+          <div class="quick-entry-form grid grid-cols-1 md:grid-cols-12 gap-3 p-4 rounded-2xl bg-white/5">
+            <div class="md:col-span-3">
+              <label class="block text-xs mb-1 opacity-70">Category</label>
+              <select id="inputCatSelect" onchange="filterItemsByCategory()" class="input-custom w-full p-3 rounded-xl text-sm font-medium">
+                <option value="grocery">📦 Grocery List</option>
+                <option value="veg">🥬 Vegetable & Others</option>
+              </select>
+            </div>
+            <div class="md:col-span-5">
+              <label class="block text-xs mb-1 opacity-70">Select Item</label>
+              <select id="itemSelect" onchange="applyRateFromChart()" class="input-custom w-full p-3 rounded-xl text-sm font-medium"></select>
+              <div id="itemSelectionPreview" class="item-selection-preview mt-2" aria-live="polite"><span>SL <b>—</b></span><span class="item-preview-name">Select an item</span><span class="item-preview-rate">Rate <b>—</b></span></div>
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-xs mb-1 opacity-70">Quantity</label>
+              <input type="number" step="any" min="0" id="itemQtyInput" placeholder="Quantity" class="input-custom w-full p-3 rounded-xl text-sm">
+            </div>
+            <div class="md:col-span-2 flex items-end">
+              <button onclick="addDeliveryItem()" id="addItemBtn" class="w-full text-white font-bold py-3 rounded-xl text-sm shadow transition-all bg-emerald-600 hover:bg-emerald-500">+ Add</button>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto rounded-2xl border border-white/10">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-white/5 text-xs uppercase opacity-80">
+                  <th class="p-3.5">SL</th>
+                  <th class="p-3.5">Item Name</th>
+                  <th class="p-3.5">Qty</th>
+                  <th class="p-3.5">Rate</th>
+                  <th class="p-3.5">Total</th>
+                  <th class="p-3.5 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody id="dayTableBody" class="text-sm"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUMMARY SECTION -->
+      <div id="sectionSummary" class="glass p-6 rounded-3xl hidden space-y-6">
+        <h3 class="text-xl font-bold">Monthly Financial & Item Summary</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="p-5 rounded-2xl bg-white/5">
+            <p class="text-xs opacity-70">Supply Days</p>
+            <h4 id="sumDays" class="text-2xl font-black mt-1">0 Days</h4>
+          </div>
+          <div class="p-5 rounded-2xl bg-white/5">
+            <p class="text-xs opacity-70">Total Expense</p>
+            <h4 id="sumExpense" class="text-2xl font-black mt-1">₹ 0</h4>
+          </div>
+          <div class="p-5 rounded-2xl bg-white/5">
+            <p class="text-xs opacity-70">Budget Status</p>
+            <h4 id="sumStatus" class="text-2xl font-black mt-1">Safe</h4>
+          </div>
+        </div>
+
+        <div class="space-y-3 pt-4">
+          <h4 id="sumItemHeading" class="font-bold text-sm">📦 Total Item Quantities Received This Month</h4>
+          <div class="overflow-x-auto rounded-2xl border border-white/10">
+            <table class="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr class="bg-white/5 text-xs uppercase opacity-80">
+                  <th class="p-3.5">SL</th>
+                  <th class="p-3.5">Item Name</th>
+                  <th class="p-3.5 text-center">Total Qty Received</th>
+                  <th class="p-3.5">Unit</th>
+                  <th class="p-3.5">Rate</th>
+                  <th class="p-3.5 text-right">Total Amount</th>
+                </tr>
+              </thead>
+              <tbody id="summaryTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row justify-end items-end gap-3 pt-2">
+          <div>
+            <label class="block text-xs mb-1 opacity-70 font-bold">Remarks (Month & Year)</label>
+            <input type="text" id="reportMonthInput" placeholder="Enter remarks..." class="input-custom p-2.5 rounded-xl text-xs font-bold w-56">
+          </div>
+          <select id="pdfLayoutSelect" class="input-custom px-3 py-2.5 rounded-xl text-xs font-bold"><option value="separate">Separate Grocery / Vegetable</option><option value="continuous">Continuous (No Section Break)</option><option value="automatic">Automatic Page Break</option></select>
+          <button onclick="window.printReport('hostel')" id="printReportBtn" class="text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500">
+            📄 PDF Preview
+          </button>
+        </div>
+      </div>
+
+      <!-- COMBINED SECTION -->
+      <div id="sectionCombined" class="glass p-6 rounded-3xl hidden space-y-6">
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+          <div>
+            <h2 class="text-2xl font-black text-emerald-300">Combined (Received Items)</h2>
+            <p class="text-xs opacity-60 mt-1">Monthly combined quantity and amount from Boys + Girls</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <select id="combinedDaySelect" onchange="selectedDay = parseInt(this.value) || 1;" class="input-custom px-3 py-2 rounded-xl text-xs font-bold">
+            </select>
+            <button onclick="openCombinedDailyDetails()" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-lg">📋 Daily Details</button>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 combined-budget-grid">
+          <div class="combined-budget-card expense-card p-5 rounded-2xl border">
+            <div class="flex items-center justify-between gap-3"><p class="text-xs font-extrabold uppercase tracking-wide opacity-75">Total Monthly Expense</p><span class="combined-budget-icon">₹</span></div>
+            <h3 id="combinedMonthlyExpense" class="text-2xl md:text-3xl font-black mt-2">₹ 0</h3>
+            <p id="combinedExpensePercent" class="text-xs mt-1 font-bold text-sky-300">Budget used: N/A</p>
+            <p class="text-xs mt-1 opacity-70">Boys + Girls, current month</p>
+          </div>
+          <div class="combined-budget-card remaining-card p-5 rounded-2xl border">
+            <div class="flex items-center justify-between gap-3"><p class="text-xs font-extrabold uppercase tracking-wide opacity-75">Remaining Budget</p><span class="combined-budget-icon">↗</span></div>
+            <h3 id="combinedRemainingBudget" class="text-2xl md:text-3xl font-black mt-2">₹ 0</h3>
+            <p id="combinedRemainingPercent" class="text-xs mt-1 font-bold text-emerald-300">Budget remaining: N/A</p>
+            <p id="combinedBudgetSubtext" class="text-xs mt-1 opacity-70">Combined monthly budget</p>
+          </div>
+        </div>
+<div class="overflow-x-auto rounded-2xl border border-white/10">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-emerald-500/20 text-xs uppercase text-emerald-300">
+                <th class="p-3.5">SL</th>
+                <th class="p-3.5">Item Name</th>
+                <th class="p-3.5 text-center">Boys</th>
+                <th class="p-3.5 text-center">Girls</th>
+                <th class="p-3.5 text-center">Total Qty</th>
+                <th class="p-3.5">Unit</th>
+                <th class="p-3.5">Rate</th>
+                <th class="p-3.5 text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody id="combinedTableBody" class="text-sm"></tbody>
+            <tfoot>
+              <tr class="bg-emerald-500/10 font-bold border-t border-emerald-500/20">
+                <td colspan="7" class="p-3.5 text-right">Grand Total:</td>
+                <td id="combinedGrandTotal" class="p-3.5 text-right text-emerald-300">₹ 0</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div class="flex flex-col sm:flex-row justify-end items-end gap-3 pt-2">
+          <div>
+            <label class="block text-xs mb-1 opacity-70 font-bold">Remarks (Month & Year)</label>
+            <input type="text" id="reportMonthCombinedInput" placeholder="Enter remarks..." class="input-custom p-2.5 rounded-xl text-xs font-bold w-56">
+          </div>
+          <select id="pdfLayoutSelectCombined" class="input-custom px-3 py-2.5 rounded-xl text-xs font-bold"><option value="separate">Separate Grocery / Vegetable</option><option value="continuous">Continuous (No Section Break)</option><option value="automatic">Automatic Page Break</option></select>
+          <button onclick="window.printReport('combined')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow flex items-center gap-2">
+            📄 PDF Preview
+          </button>
+        </div>
+      </div>
+
+      <!-- BACK TO TOP -->
+      <div class="flex justify-center pt-2 pb-2">
+        <button type="button" onclick="backToTop()" class="back-to-top-btn px-5 py-2.5 rounded-xl text-xs font-black shadow-lg transition-all" title="Back to top">
+          ↑ Back to Top
+        </button>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- PREMIUM MASTER SETTINGS MODAL -->
+  <div id="settingsModal" class="fixed inset-0 z-50 flex items-center justify-center bg-[#1e1038]/95 backdrop-blur-xl hidden p-4">
+    <div class="glass settings-modal-inner p-4 md:p-6 rounded-3xl w-full max-w-6xl space-y-5 max-h-[92vh] overflow-y-auto border border-emerald-500/30 shadow-2xl relative">
+      <div class="flex justify-between items-center border-b border-white/10 pb-5">
+        <div class="space-y-1">
+          <span class="px-3 py-1 bg-emerald-500/20 text-emerald-300 text-[10px] font-black uppercase tracking-widest rounded-full border border-emerald-500/30">Configuration Hub</span>
+          <h3 class="text-2xl font-black text-white flex items-center gap-2 pt-1">⚙️ Master Settings & Item Catalog</h3>
+          <p class="text-xs text-slate-300">Manage hostel budgets, item inventories, rates and data backup securely.</p>
+        </div>
+        <button onclick="closeSettingsModal()" class="w-10 h-10 rounded-2xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-300 hover:text-white text-lg font-bold transition-all border border-white/10">✕</button>
+      </div>
+
+      <div class="settings-content space-y-5">
+        <nav class="settings-category-nav" aria-label="Master Settings categories">
+          <button type="button" class="settings-category-btn active" data-settings-category="appearance" onclick="showSettingsCategory('appearance')">🎨 Visual Appearance</button>
+          <button type="button" class="settings-category-btn" data-settings-category="rates" onclick="showSettingsCategory('rates')">📦 Rates & Item Catalog</button>
+          <button type="button" class="settings-category-btn" data-settings-category="budget" onclick="showSettingsCategory('budget')">💰 Budget</button>
+          <button type="button" class="settings-category-btn" data-settings-category="backup" onclick="showSettingsCategory('backup')">💾 Backup & Restore</button>
+        </nav>
+        <div id="settingsFinanceGrid" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          
+          <!-- Budgets Card -->
+          <div data-setting-panel="budget" class="settings-compact-card p-4 rounded-2xl bg-gradient-to-br from-emerald-950/50 to-slate-900/60 border border-emerald-500/20 space-y-3 shadow-xl">
+            <h4 class="font-bold text-sm text-emerald-300 flex items-center gap-2">💰 Monthly Hostel Budgets</h4>
+            <div>
+              <label class="block text-xs mb-1 opacity-70 font-medium">Boys Hostel Budget (₹)</label>
+              <input type="number" step="any" min="0" id="budgetBoysInput" class="input-custom w-full p-3 rounded-xl text-sm font-bold">
+            </div>
+            <div>
+              <label class="block text-xs mb-1 opacity-70 font-medium">Girls Hostel Budget (₹)</label>
+              <input type="number" step="any" min="0" id="budgetGirlsInput" class="input-custom w-full p-3 rounded-xl text-sm font-bold">
+            </div>
+            <button onclick="saveBudgets()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs shadow transition-all">Save Budgets</button>
+          </div>
+
+          <!-- Backup Card -->
+          <div data-setting-panel="backup" class="p-6 rounded-3xl bg-gradient-to-br from-emerald-950/50 to-slate-900/60 border border-emerald-500/20 space-y-4 shadow-xl flex flex-col justify-between">
+            <div>
+              <h4 class="font-bold text-sm text-emerald-300 flex items-center gap-2">💾 Data Backup & Restore</h4>
+              <p class="text-xs text-slate-300 mt-1">Export or import your complete database.</p>
+            </div>
+            <div class="flex flex-col gap-2.5 pt-2">
+              <button onclick="exportJSONBackup()" class="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs shadow transition-all">📥 Download JSON Backup</button>
+              <label class="w-full bg-teal-700 hover:bg-teal-600 text-white font-bold py-2.5 rounded-xl text-xs shadow cursor-pointer transition-all text-center">
+                📤 Restore Backup <input type="file" id="restoreFileJson" accept=".json" onchange="importJSONBackup(event)" class="hidden">
+              </label>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Appearance: exactly two app-wide themes -->
+        <div data-setting-panel="appearance" class="settings-compact-card theme-choice-panel p-4 rounded-2xl space-y-4 shadow-xl">
+          <div><h4 class="font-bold text-sm">🎨 App Theme</h4><p class="text-xs opacity-75 mt-1">Choose one theme for the entire app. Your data and workflows stay unchanged.</p></div>
+          <div class="theme-choice-grid">
+            <button type="button" class="app-theme-choice" data-app-theme-choice="tribal" onclick="setAppThemeMode('tribal')" aria-pressed="false">
+              <span class="theme-choice-art tribal-art"><span class="art-sun">☀</span><span class="art-line"></span><span class="art-tile-row"><i>BOYS</i><i>GIRLS</i><i>COMBINED</i></span></span>
+              <span class="theme-choice-title">Tribal Theme</span><span class="theme-choice-description">Earthy colours, folk-art styling and the approved original landing background.</span>
+            </button>
+            <button type="button" class="app-theme-choice" data-app-theme-choice="modern" onclick="setAppThemeMode('modern')" aria-pressed="false">
+              <span class="theme-choice-art modern-art"><span class="modern-topline"></span><span class="modern-sidebar"></span><span class="modern-panel"></span><span class="modern-panel small"></span><span class="modern-chart"></span></span>
+              <span class="theme-choice-title">Modern Professional Theme</span><span class="theme-choice-description">Clean office UI, crisp surfaces, blue accents and high-contrast tables.</span>
+            </button>
+          </div>
+          <div id="appearanceStatus" class="theme-status" role="status">Active theme: —</div>
+        </div>
+
+        <!-- Master Item Tables -->
+        <div data-setting-panel="rates" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="settings-section-heading lg:col-span-2"><h4>📦 Rates & Item Catalog</h4><p>Maintain grocery and vegetable item names, units and rates.</p></div>
+          <!-- Grocery Catalog -->
+          <div class="p-6 rounded-3xl bg-slate-900/70 border border-white/10 space-y-4 shadow-xl">
+            <div class="flex justify-between items-center">
+              <h4 class="font-bold text-sm text-emerald-300 flex items-center gap-2">📦 Grocery Inventory</h4>
+              <span class="text-[11px] px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-300 font-bold border border-emerald-500/20">Master List</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <input type="text" id="newGroceryName" placeholder="Item Name" class="input-custom p-3 rounded-xl text-xs font-medium">
+              <input type="text" id="newGroceryUnit" placeholder="Unit (Kg/Pcs)" class="input-custom p-3 rounded-xl text-xs font-medium">
+              <input type="number" step="any" min="0" id="newGroceryRate" placeholder="Rate (₹)" class="input-custom p-3 rounded-xl text-xs font-medium">
+            </div>
+            <button onclick="addMasterItem('grocery')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs shadow transition-all">+ Add New Grocery Item</button>
+            <div class="overflow-x-auto rounded-2xl border border-white/10 max-h-72 scrollbar-thin">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="bg-white/5 uppercase sticky top-0 backdrop-blur-md text-[11px] text-slate-300">
+                    <th class="p-3 w-12">SL</th>
+                    <th class="p-3">Item Name</th>
+                    <th class="p-3 w-16">Unit</th>
+                    <th class="p-3 w-20">Rate</th>
+                    <th class="p-3 text-center w-24">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="masterGroceryBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Vegetable Catalog -->
+          <div class="p-6 rounded-3xl bg-slate-900/70 border border-white/10 space-y-4 shadow-xl">
+            <div class="flex justify-between items-center">
+              <h4 class="font-bold text-sm text-emerald-300 flex items-center gap-2">🥬 Vegetable Inventory</h4>
+              <span class="text-[11px] px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-300 font-bold border border-emerald-500/20">Master List</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <input type="text" id="newVegName" placeholder="Item Name" class="input-custom p-3 rounded-xl text-xs font-medium">
+              <input type="text" id="newVegUnit" placeholder="Unit (Kg/Pcs)" class="input-custom p-3 rounded-xl text-xs font-medium">
+              <input type="number" step="any" min="0" id="newVegRate" placeholder="Rate (₹)" class="input-custom p-3 rounded-xl text-xs font-medium">
+            </div>
+            <button onclick="addMasterItem('veg')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-xs shadow transition-all">+ Add New Veg Item</button>
+            <div class="overflow-x-auto rounded-2xl border border-white/10 max-h-72 scrollbar-thin">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="bg-white/5 uppercase sticky top-0 backdrop-blur-md text-[11px] text-slate-300">
+                    <th class="p-3 w-12">SL</th>
+                    <th class="p-3">Item Name</th>
+                    <th class="p-3 w-16">Unit</th>
+                    <th class="p-3 w-20">Rate</th>
+                    <th class="p-3 text-center w-24">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="masterVegBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<script src="rates.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
